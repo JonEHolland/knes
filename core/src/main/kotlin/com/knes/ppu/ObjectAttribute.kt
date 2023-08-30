@@ -20,4 +20,12 @@ class ObjectAttribute {
         attribute = o.attribute
         id = o.id
     }
+
+    fun verticalFlipped() : Boolean {
+        return attribute and 0x80 != 0x80
+    }
+
+    fun horizontalFlipped() : Boolean {
+        return attribute and 0x40 != 0x40
+    }
 }

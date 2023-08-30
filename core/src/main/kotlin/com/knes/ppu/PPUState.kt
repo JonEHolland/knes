@@ -23,8 +23,8 @@ class PPUState {
     var tempVramRegister: VRAMRegister = VRAMRegister()
 
     // Sprite OAM
-    var oams: Array<ObjectAttribute> = Array(64) { ObjectAttribute() }
-    var visibleOams: Array<ObjectAttribute> = Array(8) { ObjectAttribute() }
+    var oams: ArrayList<ObjectAttribute> = ArrayList(64)
+    var visibleOams: ArrayList<ObjectAttribute> = ArrayList(8)
     var spriteShiftPatternLow: IntArray = IntArray(8)
     var spriteShiftPatternHigh: IntArray = IntArray(8)
     var spriteCount : Int  = 0
@@ -75,6 +75,12 @@ class PPUState {
         vramRegister.setAddress(0x0000)
         tempVramRegister.setAddress(0x0000)
         oddFrame = false
+
+        // Populate all 64 OAM entries
+        for (i in 0..64) {
+            oams.add(ObjectAttribute())
+        }
+
         screenBuffer.clear()
     }
 }

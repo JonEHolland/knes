@@ -176,7 +176,7 @@ class PPU(
                 }
 
                 if (maskRegister.renderSprites && cycle >= 1 && cycle < 258) {
-                    for (i in 0 until spriteCount) {
+                    for (i in 0 until (spriteCount - 1)) {
                         if (visibleOams[i].x > 0 ) {
                             visibleOams[i].x--
                         } else {
@@ -310,17 +310,109 @@ class PPU(
                 }
 
                 if (cycle == 257 && scanline >= 0) {
-                    // Sprite OAM
+                    // Identify the sprites on the scanline
+
+                    // First clear everything
+                    visibleOams.clear()
+                    spriteCount = 0
+                    spriteZeroHitPossible = false
+                    statusRegister.spriteOverflow = false
+
+                    for (i in 0..7) {
+                        spriteShiftPatternLow[i] = 0x00
+                        spriteShiftPatternHigh[i] = 0x00
+                    }
+
+                    var oamIndex = 0
+                    while (oamIndex < 64 && spriteCount <= 8) {
+
+                        // Calculate if the sprite is on this scanline
+                        val diff = scanline - oams[oamIndex].y
+                        val spriteSize = if (controlRegister.spriteSize) 16 else 8
+
+                        if (diff in 0..<spriteSize) {
+                           if (spriteCount < 8) {
+                               // Sprite is visible and we have not ran out of sprites yet
+                               if (oamIndex == 0) {
+                                   // If we have sprite 0 on the scanline, mark the state
+                                   spriteZeroHitPossible = true
+                               }
+
+                               // Save the sprite to be rendered
+                               visibleOams.add(oams[oamIndex])
+                           }
+                            spriteCount++
+                        }
+                        oamIndex++
+                    }
+
+                    // Mark the Sprite Overflow flag if there are more than 8 sprites on this
+                    // scanline
+                    statusRegister.spriteOverflow = spriteCount >= 8
+                    spriteCount = if (statusRegister.spriteOverflow) 8 else spriteCount
                 }
 
                 if (cycle == 340) {
-                    // Sprite Shifters
+                    // Fetch all sprite data for the identified sprite
+
+                    for (i in 0..<spriteCount - 1) {
+                        val sprite = visibleOams[i]
+                        var spritePatternBitsLow : Int = 0
+                        var spritePatternBitsHigh : Int = 0
+                        var spritePatternAddressLow : Int = 0
+                        var spritePatternAddressHigh : Int = 0
+
+                        // Find the low byte of pattern data for the sprite
+                        spritePatternAddressLow = if (!controlRegister.spriteSize) {
+                            // 8x8 Sprites
+                            val patternTable = if (controlRegister.patternSprite) 0x1000 else 0
+                            val tileId = sprite.id * 16
+                            val row = if (!sprite.verticalFlipped()) {
+                                // Normal Orientation
+                                (scanline - sprite.y)
+                            } else {
+                                // Flipped Vertically
+                                7 - (scanline - sprite.y)
+                            }
+                            (patternTable or tileId or row) and 0xFFFF
+                        } else {
+                            // 8x16 Sprites
+                            //Top Half of tile uses TileId, bottom half uses tileId + 1
+                            val offset =  if (scanline - sprite.y < 8) 0 else 1
+
+                            val patternTable = ((sprite.id and 0x01) shl 12)
+                            val tileId = (((sprite.id and 0xFE) + offset) shl 4)
+                            val row = if (!sprite.verticalFlipped()) {
+                                // Normal Orientation
+                                (scanline - sprite.y) and 0x07
+                            } else {
+                                // Flipped Vertically
+                                7 - (scanline - sprite.y) and 0x07
+                            }
+
+                            (patternTable or tileId or row) and 0xFFFF
+                        }
+
+                        // High Bit Plane is Low + 8
+                        spritePatternAddressHigh = (spritePatternAddressLow + 8) and 0xFFFF
+
+                        // Now read the actual sprite pattern data
+                        spritePatternBitsLow = ppuBusRead(spritePatternAddressLow).toInt() and 0xFF
+                        spritePatternBitsHigh = ppuBusRead(spritePatternAddressHigh).toInt() and 0xFF
+
+
+                        if (sprite.horizontalFlipped()) {
+                            // Flip pattern bits
+                            // TODO
+                        }
+
+                        // Load shift registers with the sprite pattern
+                        spriteShiftPatternLow[i] = spritePatternBitsLow
+                        spriteShiftPatternHigh[i] = spritePatternBitsHigh
+                    }
                 }
             }
 
-            if (scanline == 240) {
-                // Post render scanline, do nothing
-            }
 
             if (scanline == 241 && cycle == 1) {
                 // End of frame
@@ -331,7 +423,6 @@ class PPU(
                     nmiRequested = true
                 }
             }
-
 
             // Now to compose the pixel value
             if (maskRegister.renderBackground) {
@@ -352,6 +443,29 @@ class PPU(
 
             if (maskRegister.renderSprites) {
                 // Calculate Sprite Pixel
+                if (maskRegister.renderSpriteLeft || cycle >= 9) {
+                    spriteZeroBeingRendered = false
+                    for (i in 0..<spriteCount) {
+                        val sprite = visibleOams[i]
+                        if (sprite.x == 0) {
+                            val lowPixel = if ((spriteShiftPatternLow[i] and 0x80) > 0) 0x1 else 0x0
+                            val highPixel = if ((spriteShiftPatternHigh[i] and 0x80) > 0) 0x1 else 0x0
+
+                            spritePixel = (highPixel shl 1) or lowPixel
+                            spritePalette = (sprite.attribute and 0x03) + 0x04
+                            spritePriority = (sprite.attribute and 0x20) == 0
+
+                            // If its Sprite 0 and a non transparent pixel
+                            spriteZeroBeingRendered = (spritePixel != 0 && i == 0)
+
+                            // If a non transparent pixel, break out of the loop, no other sprites need
+                            // to be checked for this pixel location
+                            if (spritePixel != 0) {
+                                break
+                            }
+                        }
+                    }
+                }
             }
 
             // Calculate the final pixel and palette values
@@ -381,9 +495,15 @@ class PPU(
             }
 
 
-            // Sprite0 Hit Detection goes here
+            // Sprite0 Hit Detection
+            val spriteZeroOffset = if (!(maskRegister.renderBackgroundLeft || maskRegister.renderSpriteLeft)) 9 else 1
+            statusRegister.spriteZeroHit =
+                    (spriteZeroHitPossible && spriteZeroBeingRendered) &&
+                    (maskRegister.renderSprites && maskRegister.renderBackground) &&
+                    (cycle in spriteZeroOffset..257)
 
-            // If in visible space, time to draw the pixel!
+
+            // Draw the pixel
             if (cycle - 1 in 0..<SCREEN_WIDTH && scanline >= 0 && scanline < SCREEN_HEIGHT) {
                 val color = getColor(finalPalette, finalPixel)
                 screenBuffer.put(((color.r * 127).toInt()).toByte())
@@ -416,7 +536,6 @@ class PPU(
             }
         }
     }
-
 
     fun cpuBusRead(address : Int) : Byte {
         var data : Int = 0
@@ -613,6 +732,32 @@ class PPU(
         }
     }
 
+    fun dma(offset : Int, data: Int) {
+        // DMA is used to transfer OAM. Each OAM entry is 4 bytes
+        // so this will be called 4 times to fully update the OAM entry
+        // The CPU is halted while this is happening so that you don't
+        // end up with a corrupted sprite during the transfer
+        with (bus.state.ppu) {
+            when (val index = (offset shr 2)) {
+                0x0 -> oams[index].y = data and 0xFF
+                0x1 -> oams[index].id = data and 0xFF
+                0x2 -> oams[index].attribute = data and 0xFF
+                0x3 -> oams[index].x = data and 0xFF
+            }
+        }
+    }
+
+    fun nmiRequested() : Boolean {
+        with (bus.state.ppu) {
+            if (nmiRequested) {
+                nmiRequested = false
+                return true
+            }
+
+            return false
+        }
+    }
+
     private fun getColor(paletteId : Int, pixel : Int) : Color {
         val address = (0x3F00 + ((paletteId shl 2) + pixel))
         val index = ppuBusRead(address)
@@ -651,32 +796,6 @@ class PPU(
                 0x3 -> oams[index].x and 0xFF
                 else -> 0
             }
-        }
-    }
-
-    fun dma(offset : Int, data: Int) {
-        // DMA is used to transfer OAM. Each OAM entry is 4 bytes
-        // so this will be called 4 times to fully update the OAM entry
-        // The CPU is halted while this is happening so that you don't
-        // end up with a corrupted sprite during the transfer
-        with (bus.state.ppu) {
-            when (val index = (offset shr 2)) {
-                0x0 -> oams[index].y = data and 0xFF
-                0x1 -> oams[index].id = data and 0xFF
-                0x2 -> oams[index].attribute = data and 0xFF
-                0x3 -> oams[index].x = data and 0xFF
-            }
-        }
-    }
-
-    fun nmiRequested() : Boolean {
-        with (bus.state.ppu) {
-            if (nmiRequested) {
-                nmiRequested = false
-                return true
-            }
-
-            return false
         }
     }
 }

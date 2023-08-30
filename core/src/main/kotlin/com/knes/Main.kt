@@ -19,10 +19,8 @@ class Main : ApplicationAdapter() {
     private lateinit var viewport : StretchViewport
     private lateinit var texture : Texture
     private lateinit var bus : Bus
-    private lateinit var frameRate : FrameRate
 
     override fun create() {
-        frameRate = FrameRate()
         batch = SpriteBatch()
         camera = OrthographicCamera(256f,240f)
         viewport = StretchViewport(256f,240f, camera)
@@ -65,10 +63,6 @@ class Main : ApplicationAdapter() {
         texture.bind()
         batch.draw(texture, 0f, 0f)
         batch.end()
-
-        frameRate.update()
-        frameRate.render()
-
     }
 
     override fun resize(width: Int, height: Int) {
