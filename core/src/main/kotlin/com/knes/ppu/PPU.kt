@@ -190,10 +190,10 @@ class PPU(
 
         fun getBitPlaneAddress(offset: Int): Int {
             with(bus.state.ppu) {
-                val address1 = (if (controlRegister.patternBackground) (0x1 shl 12) else 0)
-                val address2 = (bgNextTileId shl 4)
+                val address1 = (if (controlRegister.patternBackground) 0x1000 else 0x0000)
+                val address2 = (bgNextTileId * 16)
                 val address3 = (vramRegister.fineY + offset)
-                return (address1 + address2 + address3) and 0xFFFF
+                return (address1 + address2 + address3)
             }
         }
 
@@ -240,9 +240,7 @@ class PPU(
                             // Get the next tile Id
                             // "(vramAddress & 0x0FFF)" : Mask to 12 bits that are relevant
                             // "| 0x2000"          : Offset into nametable space on PPU address bus
-                            bgNextTileId = ppuBusRead(0x2000 or (vramRegister.address() and 0x0FFF)).toInt()
-
-
+                            bgNextTileId = ppuBusRead(0x2000 or (vramRegister.address() and 0x0FFF)).toInt() and 0xFF
                         }
 
                         2 -> {
@@ -302,7 +300,8 @@ class PPU(
 
                 // Dummy Fetches for timing purposes (MMC5 uses this?)
                 if (cycle == 337 || cycle == 340) {
-                    bgNextTileId = ppuBusRead(0x2000 or (vramRegister.address() and 0x0FFF)).toInt()
+                    bgNextTileId = ppuBusRead(0x2000 or (vramRegister.address() and 0x0FFF))
+                        .toInt() and 0xFF
                 }
 
                 if (scanline == -1 && cycle >= 280 && cycle < 305) {
@@ -332,6 +331,7 @@ class PPU(
                     nmiRequested = true
                 }
             }
+
 
             // Now to compose the pixel value
             if (maskRegister.renderBackground) {

@@ -326,8 +326,7 @@ class CPU(val bus : Bus) {
         I(o::isc, a::abx,7),
     )
 
-    var log  = true
-    var logCount = 0
+    var log  = false
 
     fun tick() {
         with (bus.state.cpu) {
@@ -339,12 +338,13 @@ class CPU(val bus : Bus) {
                 fetched = 0
                 addressAbsolute = 0
                 addressRelative = 0
-                val busPrev = bus.debug()
+                var busPrev = ""
+                if (log) {
+                    busPrev = bus.debug()
+                }
+
 
                 val pcTmp = pc // Store for debugging
-                if (logCount > 50000) {
-                    log = false
-                }
 
                 val index = read(pc)
                 currentInstruction = opcodes[index]
@@ -362,7 +362,6 @@ class CPU(val bus : Bus) {
                 if (log) {
                     val debug = currentInstruction!!.pretty(pcTmp, index, this@CPU) + "   " + busPrev
                     println(debug)
-                    logCount++
                 }
 
                 setFlag(Flags.U, true)

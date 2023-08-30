@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.StretchViewport
+import kotlin.system.exitProcess
 
 
 class Main : ApplicationAdapter() {
@@ -28,7 +29,7 @@ class Main : ApplicationAdapter() {
         viewport.apply()
         camera.position.set(camera.viewportWidth / 2, camera.viewportHeight / 2, 0f)
 
-        bus = Bus("../bf.nes", State())
+        bus = Bus("../dk.nes", State())
         texture = Texture(bus.state.ppu.SCREEN_WIDTH, bus.state.ppu.SCREEN_HEIGHT, Pixmap.Format.RGBA8888)
         bus.reset()
     }
@@ -45,7 +46,6 @@ class Main : ApplicationAdapter() {
         }
 
         bus.state.ppu.frameComplete = false
-
         bus!!.state.ppu.screenBuffer.position(0)
 
         texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest)
