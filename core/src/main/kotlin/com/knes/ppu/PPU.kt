@@ -177,9 +177,10 @@ class PPU(
 
                 if (maskRegister.renderSprites && cycle >= 1 && cycle < 258) {
                     for (i in 0 until (spriteCount - 1)) {
-                        if (visibleOams[i].x > 0 ) {
+                        if (visibleOams[i].x > 0) {
                             visibleOams[i].x--
                         } else {
+                            // If cycle and scanline is on this sprite, update the shifters
                             spriteShiftPatternLow[i] = spriteShiftPatternLow[i] shl 1
                             spriteShiftPatternHigh[i] = spriteShiftPatternHigh[i] shl 1
                         }
@@ -337,7 +338,7 @@ class PPU(
                                }
 
                                // Save the sprite to be rendered
-                               visibleOams[spriteCount] = oams[oamIndex]
+                               visibleOams[spriteCount].set(oams[oamIndex])
                            }
                             spriteCount++
                         }
@@ -410,7 +411,7 @@ class PPU(
                                 return tmp and 0xFF
                             }
                             // Flip pattern bits
-                            spritePatternBitsLow = flip(spritePatternAddressLow)
+                            spritePatternBitsLow = flip(spritePatternBitsLow)
                             spritePatternBitsHigh = flip(spritePatternBitsHigh)
                         }
 
@@ -470,7 +471,7 @@ class PPU(
                             // If a non transparent pixel, break out of the loop, no other sprites need
                             // to be checked for this pixel location
                             if (spritePixel != 0) {
-                              //  break
+                                break
                             }
                         }
                     }
