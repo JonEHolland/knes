@@ -22,10 +22,10 @@ class ObjectAttribute {
     }
 
     fun verticalFlipped() : Boolean {
-        return attribute and 0x80 != 0x80
+        return attribute and 0x80 == 0x80
     }
 
     fun horizontalFlipped() : Boolean {
-        return attribute and 0x40 != 0x40
+        return attribute and 0x40 == 0x40
     }
 }

@@ -226,7 +226,7 @@ class PPU(
                     }
                 }
 
-                if ((cycle >= 2 && cycle < 258) || (cycle >= 321 && cycle < 338)) {
+                if ((cycle in 2..257) || (cycle in 321..337)) {
                     updateShifters()
 
                     // Depending on the cycle, we execute a different step of the rendering process
@@ -313,10 +313,8 @@ class PPU(
                     // Identify the sprites on the scanline
 
                     // First clear everything
-                    visibleOams.clear()
+                    visibleOams.forEach {it.clear(0xFF)}
                     spriteCount = 0
-                    spriteZeroHitPossible = false
-                    statusRegister.spriteOverflow = false
 
                     for (i in 0..7) {
                         spriteShiftPatternLow[i] = 0x00
@@ -339,7 +337,7 @@ class PPU(
                                }
 
                                // Save the sprite to be rendered
-                               visibleOams.add(oams[oamIndex])
+                               visibleOams[spriteCount] = oams[oamIndex]
                            }
                             spriteCount++
                         }
@@ -402,8 +400,18 @@ class PPU(
 
 
                         if (sprite.horizontalFlipped()) {
+                            // Yeah I stole this.
+                            // https://stackoverflow.com/a/2602885
+                            fun flip(input : Int) : Int {
+                                var tmp = input
+                                tmp = (((tmp and 0xF0) shr 4) or ((tmp and 0x0F) shl 4))
+                                tmp = (((tmp and 0xCC) shr 2) or ((tmp and 0x33) shl 2))
+                                tmp = (((tmp and 0xAA) shr 1) or ((tmp and 0x55) shl 1))
+                                return tmp and 0xFF
+                            }
                             // Flip pattern bits
-                            // TODO
+                            spritePatternBitsLow = flip(spritePatternAddressLow)
+                            spritePatternBitsHigh = flip(spritePatternBitsHigh)
                         }
 
                         // Load shift registers with the sprite pattern
@@ -424,7 +432,7 @@ class PPU(
                 }
             }
 
-            // Now to compose the pixel value
+            // Calculate Background Pixel
             if (maskRegister.renderBackground) {
                 if (maskRegister.renderBackgroundLeft || (cycle >= 9)) {
                     // Use FineX to allow for smooth scrolling vertically
@@ -441,12 +449,13 @@ class PPU(
                 }
             }
 
+            // Calculate Sprite Pixel
             if (maskRegister.renderSprites) {
-                // Calculate Sprite Pixel
                 if (maskRegister.renderSpriteLeft || cycle >= 9) {
                     spriteZeroBeingRendered = false
                     for (i in 0..<spriteCount) {
                         val sprite = visibleOams[i]
+                        // Cycle has reached the start of the sprite
                         if (sprite.x == 0) {
                             val lowPixel = if ((spriteShiftPatternLow[i] and 0x80) > 0) 0x1 else 0x0
                             val highPixel = if ((spriteShiftPatternHigh[i] and 0x80) > 0) 0x1 else 0x0
@@ -461,7 +470,7 @@ class PPU(
                             // If a non transparent pixel, break out of the loop, no other sprites need
                             // to be checked for this pixel location
                             if (spritePixel != 0) {
-                                break
+                              //  break
                             }
                         }
                     }
@@ -738,11 +747,11 @@ class PPU(
         // The CPU is halted while this is happening so that you don't
         // end up with a corrupted sprite during the transfer
         with (bus.state.ppu) {
-            when (val index = (offset shr 2)) {
-                0x0 -> oams[index].y = data and 0xFF
-                0x1 -> oams[index].id = data and 0xFF
-                0x2 -> oams[index].attribute = data and 0xFF
-                0x3 -> oams[index].x = data and 0xFF
+            when ((offset and 0x03)) {
+                0x0 -> oams[offset shr 2].y = data and 0xFF
+                0x1 -> oams[offset shr 2].id = data and 0xFF
+                0x2 -> oams[offset shr 2].attribute = data and 0xFF
+                0x3 -> oams[offset shr 2].x = data and 0xFF
             }
         }
     }
@@ -789,11 +798,11 @@ class PPU(
 
     private fun currentOAM() : Int {
         with (bus.state.ppu) {
-            return when (val index = (oamAddress shr 2)) {
-                0x0 -> oams[index].y and 0xFF
-                0x1 -> oams[index].id and 0xFF
-                0x2 -> oams[index].attribute and 0xFF
-                0x3 -> oams[index].x and 0xFF
+            return when (oamAddress and 0x03) {
+                0x0 -> oams[oamAddress shr 2].y and 0xFF
+                0x1 -> oams[oamAddress shr 2].id and 0xFF
+                0x2 -> oams[oamAddress shr 2].attribute and 0xFF
+                0x3 -> oams[oamAddress shr 2].x and 0xFF
                 else -> 0
             }
         }
