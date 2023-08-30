@@ -29,7 +29,7 @@ class Main : ApplicationAdapter() {
         viewport.apply()
         camera.position.set(camera.viewportWidth / 2, camera.viewportHeight / 2, 0f)
 
-        bus = Bus("../dk.nes", State())
+        bus = Bus("../bf.nes", State())
         texture = Texture(bus.state.ppu.SCREEN_WIDTH, bus.state.ppu.SCREEN_HEIGHT, Pixmap.Format.RGBA8888)
         bus.reset()
     }
@@ -46,21 +46,21 @@ class Main : ApplicationAdapter() {
         }
 
         bus.state.ppu.frameComplete = false
-        bus!!.state.ppu.screenBuffer.position(0)
+        bus.state.ppu.screenBuffer.position(0)
 
         texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest)
         Gdx.gl.glTexImage2D(
             GL20.GL_TEXTURE_2D,
             0,
             GL20.GL_RGBA,
-            bus!!.state.ppu.SCREEN_WIDTH,
-            bus!!.state.ppu.SCREEN_HEIGHT,
+            bus.state.ppu.SCREEN_WIDTH,
+            bus.state.ppu.SCREEN_HEIGHT,
             0,
             GL20.GL_RGBA,
             GL20.GL_BYTE,
-            bus!!.state.ppu.screenBuffer)
+            bus.state.ppu.screenBuffer)
 
-        batch.setProjectionMatrix(camera.combined)
+        batch.projectionMatrix = camera.combined
         batch.begin()
         texture.bind()
         batch.draw(texture, 0f, 0f)

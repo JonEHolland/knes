@@ -118,19 +118,13 @@ class Opcodes(
 
     fun brk() : Int {
         with (state) {
-            // Dummy Read ???
             cpu.read((pc - 1) and 0xFFFF)
-
-            cpu.pushStack(((pc shr 8) and 0xFF))
-            cpu.pushStack((pc and 0xFF))
-            cpu.pushStack(((status or Flags.B.value) and 0xFF))
-            pc = cpu.irqVector()
             cpu.setFlag(Flags.I, true)
+            cpu.irq()
         }
 
         return 0
     }
-
 
     // Clears Carry Flag
     fun clc() : Int {

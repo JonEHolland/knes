@@ -2,9 +2,9 @@ package com.knes
 
 class CartridgeState {
 
-    var irqRequested = false;
+    var irqRequested = false
 
     fun reset() {
-        irqRequested = false;
+        irqRequested = false
     }
 }
