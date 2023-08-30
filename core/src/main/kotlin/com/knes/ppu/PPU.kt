@@ -323,15 +323,13 @@ class PPU(
                 // Post render scanline, do nothing
             }
 
-            if (scanline in 241..250) {
-                if (scanline == 241 && cycle == 1) {
-                    // End of frame
-                    statusRegister.verticalBlank = true
-                    frameComplete = true
+            if (scanline == 241 && cycle == 1) {
+                // End of frame
+                statusRegister.verticalBlank = true
+                frameComplete = true
 
-                    if (controlRegister.enableNMI) {
-                        nmiRequested = true
-                    }
+                if (controlRegister.enableNMI) {
+                    nmiRequested = true
                 }
             }
 
@@ -382,6 +380,7 @@ class PPU(
                 finalPalette = bgPalette
             }
 
+
             // Sprite0 Hit Detection goes here
 
             // If in visible space, time to draw the pixel!
@@ -399,6 +398,7 @@ class PPU(
                     // TODO Notify Cartridge of Scanline for MMC3
                 }
             }
+
 
             cycle++
             // Last cycle? Increment scanline and start from 0

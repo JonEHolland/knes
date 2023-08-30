@@ -20,6 +20,15 @@ class BusState {
 
     fun reset() {
         cpuRam = ByteArray(2048)
+
+        // Setup memory in alternating 4 bytes of 0x0 or 0xFF.
+        // This matches how FCEUX sets memory on start
+        // A real NES is undefined, but matching FCEUX helps me
+        // debug
+        for (i in cpuRam.indices) {
+            cpuRam[i] = if ((i / 4) % 2 == 0) 0 else 255.toByte()
+        }
+
         dmaEnabled = false
         dmaWaitCycle = true
         dmaData = 0x00

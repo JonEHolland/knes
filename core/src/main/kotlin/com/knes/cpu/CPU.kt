@@ -450,7 +450,7 @@ class CPU(val bus : Bus) {
             pc = vectorAddress
 
             // Add the cycles consumed by the interrupt
-            cyclesRemaining = cyclesNeeded
+            cyclesRemaining += cyclesNeeded
         }
     }
 

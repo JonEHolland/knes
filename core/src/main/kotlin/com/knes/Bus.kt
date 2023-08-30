@@ -27,11 +27,11 @@ class Bus(
                 data = cart.cpuBusRead(address)
             } else if (address in 0..0x1FFF) {
                 // System RAM
-                data = cpuRam[address % 2048]
+                data = cpuRam[address and 0x07FF]
             } else if (address in 0x2000..0x3FFF) {
                 // PPU Registers
                 // 8 registers, mirrored through the range
-                data = ppu.cpuBusRead((address % 8))
+                data = ppu.cpuBusRead((address and 0x0007))
             } else if (address in 0x4016..0x4017) {
                 // Read LSB from controller state and shift register
                 data = if (controllerState[address and 0x0001] and 0x80 > 0) 0x1 else 0x0
@@ -51,11 +51,11 @@ class Bus(
                 cart.cpuBusWrite(address, data)
             } else if (address in 0x0000..0x1FFF) {
                 // System RAM
-                cpuRam[address % 2048]= data
+                cpuRam[address and 0x07FF]= data
             } else if (address in 0x2000..0x3FFF) {
                 // PPU Registers
                 // 8 registers, mirrored through the range
-                ppu.cpuBusWrite((address % 8), data)
+                ppu.cpuBusWrite((address and 0x0007), data)
             } else if (address == 0x4014) {
                 // A write to this address enables DMA mode
                 // So we will setup the DMA state so the CPU can halt and
@@ -108,9 +108,6 @@ class Bus(
             if (dmaWaitCycle) {
                 // This is used to ensure DMA starts on an even clock cycle
                 // Return early until this is false
-
-                // This is used to ensure DMA starts on an even clock cycle
-                // Return early until this is false
                 dmaWaitCycle = state.clock % 2 == 0
                 return true
             }
@@ -118,7 +115,7 @@ class Bus(
             // DMA Can Start
             if (state.clock % 2 == 0) {
                 // Even cycle means read from CPU
-                dmaData = read((dmaPage shl 8 or dmaOffset)).toInt() and 0xFF
+                dmaData = read(((dmaPage shl 8) or dmaOffset)).toInt() and 0xFF
             } else {
                 // Odd cycle writes to PPU
                 ppu.dma(dmaOffset, dmaData)
@@ -148,7 +145,7 @@ class Bus(
 
     fun debug() : String {
         val registers = "A:${hex8(state.cpu.acc)} X:${hex8(state.cpu.x)} Y:${hex8(state.cpu.y)}"
-        val registers2 = "SP:${hex8( state.cpu.sp)} P:${state.cpu.statusString()}"
+        val registers2 = "S:${hex8( state.cpu.sp)} P:${state.cpu.statusString()}"
 
         return "$registers $registers2"
     }
