@@ -176,7 +176,7 @@ class PPU(
                 }
 
                 if (maskRegister.renderSprites && cycle >= 1 && cycle < 258) {
-                    for (i in 0 until (spriteCount - 1)) {
+                    for (i in 0 until spriteCount) {
                         if (visibleOams[i].x > 0) {
                             visibleOams[i].x--
                         } else {
@@ -323,14 +323,14 @@ class PPU(
                     }
 
                     var oamIndex = 0
-                    while (oamIndex < 64 && spriteCount <= 8) {
+                    while (oamIndex < 64 && spriteCount < 8) {
 
                         // Calculate if the sprite is on this scanline
                         val diff = scanline - oams[oamIndex].y
                         val spriteSize = if (controlRegister.spriteSize) 16 else 8
 
                         if (diff in 0..<spriteSize) {
-                           if (spriteCount < 8) {
+                           if (spriteCount <= 8) {
                                // Sprite is visible and we have not ran out of sprites yet
                                if (oamIndex == 0) {
                                    // If we have sprite 0 on the scanline, mark the state
@@ -347,14 +347,14 @@ class PPU(
 
                     // Mark the Sprite Overflow flag if there are more than 8 sprites on this
                     // scanline
-                    statusRegister.spriteOverflow = spriteCount >= 8
-                    spriteCount = if (statusRegister.spriteOverflow) 8 else spriteCount
+                    statusRegister.spriteOverflow = spriteCount > 7
+                    spriteCount = if (statusRegister.spriteOverflow) 7 else spriteCount
                 }
 
                 if (cycle == 340) {
                     // Fetch all sprite data for the identified sprite
 
-                    for (i in 0..<spriteCount - 1) {
+                    for (i in 0..<spriteCount) {
                         val sprite = visibleOams[i]
                         var spritePatternBitsLow : Int = 0
                         var spritePatternBitsHigh : Int = 0
@@ -454,7 +454,7 @@ class PPU(
             if (maskRegister.renderSprites) {
                 if (maskRegister.renderSpriteLeft || cycle >= 9) {
                     spriteZeroBeingRendered = false
-                    for (i in 0..<spriteCount) {
+                    for (i in 0..spriteCount) {
                         val sprite = visibleOams[i]
                         // Cycle has reached the start of the sprite
                         if (sprite.x == 0) {

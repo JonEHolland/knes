@@ -27,7 +27,7 @@ class Main : ApplicationAdapter() {
         viewport.apply()
         camera.position.set(camera.viewportWidth / 2, camera.viewportHeight / 2, 0f)
 
-        bus = Bus("../bf.nes", State())
+        bus = Bus("../roms/dk.nes", State())
         texture = Texture(bus.state.ppu.SCREEN_WIDTH, bus.state.ppu.SCREEN_HEIGHT, Pixmap.Format.RGBA8888)
         bus.reset()
     }
