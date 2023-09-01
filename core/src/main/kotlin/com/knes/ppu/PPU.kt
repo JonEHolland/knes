@@ -485,11 +485,15 @@ class PPU(
                 // If Background is transparent and Sprite is not, use sprite
                 finalPixel = spritePixel
                 finalPalette = spritePalette
-            } else if (bgPixel > 0 && spritePixel == 0) {
+            }
+
+            if (bgPixel > 0 && spritePixel == 0) {
                 // If Sprite is transparent, use background
                 finalPixel = bgPixel
                 finalPalette = bgPalette
-            } else if (bgPixel > 0 && spritePixel > 0) {
+            }
+
+            if (bgPixel > 0 && spritePixel > 0) {
                 // Both sprite and background have a color
 
                 if (spritePriority) {
@@ -501,11 +505,7 @@ class PPU(
                     finalPixel = bgPixel
                     finalPalette = bgPalette
                 }
-            } else {
-                finalPixel = bgPixel
-                finalPalette = bgPalette
             }
-
 
             // Sprite0 Hit Detection
             if ( (maskRegister.shouldRender()) &&
@@ -514,9 +514,6 @@ class PPU(
 
                 statusRegister.spriteZeroHit = true
             }
-
-
-
 
             // Draw the pixel
             if (cycle - 1 in 0..<SCREEN_WIDTH && scanline >= 0 && scanline < SCREEN_HEIGHT) {
