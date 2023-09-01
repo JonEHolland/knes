@@ -1,13 +1,10 @@
 package com.knes.mappers
 
 import com.knes.Cartridge
-import com.knes.CartridgeState
-
 
 class MMC1(
     private val rawBytes : ByteArray,
-    private val header : Header,
-    state : CartridgeState) : Cartridge(rawBytes, header, state) {
+    private val header : Header) : Cartridge(rawBytes, header) {
 
     private var chr4kLowBank : Int = 0x00
     private var chr4kHighBank : Int = 0x00
@@ -43,7 +40,7 @@ class MMC1(
     }
 
     override fun willCartInterceptPPUWrite(address: Int, data: Byte): Boolean {
-        return address <= 0x1FFF && chrBanks == 0
+        return address <= 0x1FFF && chrBankCount == 0
     }
 
     override fun cpuBusRead(address: Int): Byte {
@@ -131,7 +128,7 @@ class MMC1(
                         } else {
                             // 16k Mode with higher bank fixed to the last bank
                             prg16kLowBank = loadRegister and 0x0F
-                            prg16kHighBank = prgBanks - 1
+                            prg16kHighBank = prgBankCount - 1
                         }
                     }
 
@@ -144,7 +141,7 @@ class MMC1(
     }
 
     override fun ppuBusRead(address: Int): Byte {
-        return if (chrBanks == 0) {
+        return if (chrBankCount == 0) {
             chrMemory[address]
         } else {
             val bank = if (address <= 0x0FFF) chr4kLowBank else chr4kHighBank
@@ -159,7 +156,7 @@ class MMC1(
     }
 
     override fun ppuBusWrite(address: Int, data: Byte) {
-        if (chrBanks == 0) {
+        if (chrBankCount == 0) {
             chrMemory[address] = data
         }
     }
@@ -182,7 +179,7 @@ class MMC1(
         chr8kBank = 0x0
 
         prg16kLowBank = 0x0
-        prg16kHighBank = prgBanks - 1
+        prg16kHighBank = prgBankCount - 1
         prg32kBank = 0
     }
 }

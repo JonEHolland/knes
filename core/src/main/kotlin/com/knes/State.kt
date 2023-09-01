@@ -17,7 +17,6 @@ class State {
     val cpu = CPUState()
     val ppu = PPUState()
     val apu = APUState()
-    val cart = CartridgeState()
 
     var clock : Int = 0
 
@@ -26,7 +25,6 @@ class State {
         cpu.reset()
         ppu.reset()
         apu.reset()
-        cart.reset()
 
         clock = 0
     }

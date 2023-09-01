@@ -1,12 +1,10 @@
 package com.knes.mappers
 
 import com.knes.Cartridge
-import com.knes.CartridgeState
 
 class MMC2 (
     private val rawBytes : ByteArray,
-    private val header : Header,
-    state : CartridgeState) : Cartridge(rawBytes, header, state) {
+    private val header : Header) : Cartridge(rawBytes, header) {
 
     private var prgBankLow = 0x00
     private var prgBankHigh = 0x00
@@ -28,7 +26,7 @@ class MMC2 (
     }
 
     override fun willCartInterceptPPUWrite(address: Int, data: Byte): Boolean {
-        return address <= 0x1FFF && chrBanks == 0
+        return address <= 0x1FFF && chrBankCount == 0
     }
 
     override fun cpuBusRead(address: Int): Byte {
@@ -49,7 +47,7 @@ class MMC2 (
     }
 
     override fun ppuBusWrite(address: Int, data: Byte) {
-        if (chrBanks == 0) {
+        if (chrBankCount == 0) {
             chrMemory[address] = data
         }
     }
@@ -64,6 +62,6 @@ class MMC2 (
 
     override fun reset() {
         prgBankLow = 0
-        prgBankHigh = prgBanks - 1
+        prgBankHigh = prgBankCount - 1
     }
 }

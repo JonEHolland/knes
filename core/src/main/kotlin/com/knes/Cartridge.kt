@@ -1,16 +1,13 @@
 package com.knes
 
-import com.knes.mappers.MMC1
-import com.knes.mappers.MMC2
-import com.knes.mappers.NROM
+import com.knes.mappers.*
 import java.lang.RuntimeException
 import java.nio.file.Files
 import java.nio.file.Paths
 
 abstract class Cartridge(
     private val rawBytes : ByteArray,
-    private val header : Header,
-    val state : CartridgeState) {
+    private val header : Header) {
 
     enum class MirrorMode {
         HARDWARE,
@@ -52,15 +49,18 @@ abstract class Cartridge(
     }
 
     companion object {
-        fun Load(romName : String, state : CartridgeState) : Cartridge {
+        fun Load(romName : String) : Cartridge {
 
             val bytes = Files.readAllBytes(Paths.get(romName))
             val header = Header(bytes)
 
             when (header.mapperId) {
-                0 -> return NROM(bytes, header, state)
-                1 -> return MMC1(bytes, header, state)
-                2 -> return MMC2(bytes, header, state)
+                0 -> return NROM(bytes, header)
+                1 -> return MMC1(bytes, header)
+                2 -> return MMC2(bytes, header)
+                3 -> return CNROM(bytes, header)
+                4 -> return MMC3(bytes, header)
+
                 else -> {
                     throw RuntimeException("Unsupported Mapper or Invalid ROM format.")
                 }
@@ -72,36 +72,36 @@ abstract class Cartridge(
     val prgMemory : MutableList<Byte> = mutableListOf()
     val chrMemory : MutableList<Byte> = mutableListOf()
 
-    protected var prgBanks : Int
-    protected var chrBanks : Int
+    protected var prgBankCount : Int
+    protected var chrBankCount : Int
 
     init {
 
         if (header.iNES2Format) {
-            prgBanks = ((header.prgRamSize and 0x07) shl 8) or header.prgRomChunks
-            chrBanks = ((header.prgRamSize and 0x38) shl 8) or header.chrRomChunks
+            prgBankCount = ((header.prgRamSize and 0x07) shl 8) or header.prgRomChunks
+            chrBankCount = ((header.prgRamSize and 0x38) shl 8) or header.chrRomChunks
         } else {
-            prgBanks = header.prgRomChunks
-            chrBanks = header.chrRomChunks
+            prgBankCount = header.prgRomChunks
+            chrBankCount = header.chrRomChunks
         }
 
         // Positions in byte array where PRG and CHR roms start
         val prgStart = if (header.trainerExists) { 528 } else { 16 }
-        val chrStart = prgStart + (prgBanks * 16384)
+        val chrStart = prgStart + (prgBankCount * 16384)
 
         // Read PRG ROM
-        for (i in 0..<((prgBanks * 16384))) {
+        for (i in 0..<((prgBankCount * 16384))) {
             prgMemory.add((rawBytes[prgStart + i]))
         }
 
         // Read CHR ROM
         // If no banks, just create the 8k space
-        if (chrBanks == 0) {
+        if (chrBankCount == 0) {
             for (i in 0..8192) {
                 chrMemory.add(0)
             }
         } else {
-            for (i in 0..<(chrBanks * 8192)) {
+            for (i in 0..<(chrBankCount * 8192)) {
                 chrMemory.add((rawBytes[chrStart + i]))
             }
         }
@@ -128,4 +128,12 @@ abstract class Cartridge(
     abstract fun mapperId() : Int
 
     abstract fun reset()
+
+    open fun irqRequested() : Boolean {
+        return false
+    }
+
+    open fun irqClear() {}
+
+    open fun notifyScanline() {}
 }

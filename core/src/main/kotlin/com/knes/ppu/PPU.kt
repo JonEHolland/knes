@@ -373,7 +373,13 @@ class PPU(
                         } else {
                             // 8x16 Sprites
                             //Top Half of tile uses TileId, bottom half uses tileId + 1
-                            val offset =  if (scanline - sprite.y < 8) 0 else 1
+                            var offset =  if (scanline - sprite.y < 8) 0 else 1
+
+                            if (sprite.verticalFlipped()) {
+                                // But if the sprite is flipped, the top and bottom halves
+                                // need to be swapped
+                                offset = if (offset == 0) 1 else 0
+                            }
 
                             val patternTable = ((sprite.id and 0x01) shl 12)
                             val tileId = (((sprite.id and 0xFE) + offset) shl 4)
@@ -502,11 +508,14 @@ class PPU(
 
 
             // Sprite0 Hit Detection
+            if ( (maskRegister.shouldRender()) &&
+                (spriteZeroHitPossible && spriteZeroBeingRendered) &&
+                (cycle in maskRegister.spriteZeroOffset()..257)) {
 
-            statusRegister.spriteZeroHit =
-                    (maskRegister.shouldRender()) &&
-                    (spriteZeroHitPossible && spriteZeroBeingRendered) &&
-                    (cycle in maskRegister.spriteZeroOffset()..257)
+                statusRegister.spriteZeroHit = true
+            }
+
+
 
 
             // Draw the pixel
@@ -521,7 +530,7 @@ class PPU(
             // Notify Cartridge of scanline completion if needed
             if (maskRegister.shouldRender()) {
                 if (cycle == 260 && scanline < 240) {
-                    // TODO Notify Cartridge of Scanline for MMC3
+                    bus.cart.notifyScanline()
                 }
             }
 
@@ -565,6 +574,7 @@ class PPU(
                     // PPU Data
                     // Return the previously fetched address and set up for the next one
                     // Odd behavior, but that is how the PPU works
+                    val lastAddress = vramRegister.address()
                     data = ppuDataBuffer
                     ppuDataBuffer = ppuBusRead(vramRegister.address()).toInt() and 0xFF
 
@@ -576,11 +586,10 @@ class PPU(
                     // Setup next one and increment address based on control register
                     vramRegister.increment(controlRegister)
 
-//                    if (((loopyV.get() and 0x1000) == 0x1000)
-//                        && (previousAddress and 0x1000) == 0) {
-//                        // TODO - Notify scanline interrupt to MMC3 carts
-//                        // cart.notify()
-//                    }
+                    if (((vramRegister.address() and 0x1000) == 0x1000)
+                        && (lastAddress and 0x1000) == 0) {
+                        bus.cart.notifyScanline()
+                    }
                 }
             }
         }

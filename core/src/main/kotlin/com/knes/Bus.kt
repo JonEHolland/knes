@@ -1,6 +1,5 @@
 package com.knes
 
-import com.knes.Debug.hex16
 import com.knes.Debug.hex8
 import com.knes.apu.APU
 import com.knes.cpu.CPU
@@ -12,7 +11,7 @@ class Bus(
 ) {
 
     val cpu = CPU(this)
-    val cart = Cartridge.Load(romName, state.cart)
+    val cart = Cartridge.Load(romName)
     val ppu = PPU(this)
     val apu = APU(this)
 
@@ -91,8 +90,8 @@ class Bus(
         }
 
         // Pass IRQ to CPU if Cartridge is requesting it.
-        if (state.cart.irqRequested) {
-            state.cart.irqRequested = false
+        if (cart.irqRequested()) {
+            cart.irqClear()
             cpu.irq()
         }
 
