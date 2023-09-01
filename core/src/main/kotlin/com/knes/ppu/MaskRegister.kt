@@ -34,4 +34,13 @@ class MaskRegister {
         value = value or if (enhanceBlue) 0x80 else 0x00
         return (value and 0xFF)
     }
+
+    fun spriteZeroOffset() : Int {
+        return if (!(renderBackgroundLeft || renderSpriteLeft)) 9 else 1
+    }
+
+    fun shouldRender() : Boolean {
+        return renderSprites || renderBackground
+    }
+
 }

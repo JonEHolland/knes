@@ -138,9 +138,8 @@ class Bus(
 
     fun reset() {
         state.reset()
-
-        // Needed because of the Reset Vector
-        cpu.reset()
+        cart.reset() // Needed to ensure mappers setup correctly
+        cpu.reset() // Needed because of the Reset Vector
     }
 
     fun debug() : String {

@@ -13,7 +13,7 @@ import com.badlogic.gdx.utils.viewport.StretchViewport
 import kotlin.system.exitProcess
 
 
-class Main : ApplicationAdapter() {
+class Main(var romName : String) : ApplicationAdapter() {
     private lateinit var batch : SpriteBatch
     private lateinit var camera : OrthographicCamera
     private lateinit var viewport : StretchViewport
@@ -27,7 +27,7 @@ class Main : ApplicationAdapter() {
         viewport.apply()
         camera.position.set(camera.viewportWidth / 2, camera.viewportHeight / 2, 0f)
 
-        bus = Bus("../roms/dk.nes", State())
+        bus = Bus(romName, State())
         texture = Texture(bus.state.ppu.SCREEN_WIDTH, bus.state.ppu.SCREEN_HEIGHT, Pixmap.Format.RGBA8888)
         bus.reset()
     }

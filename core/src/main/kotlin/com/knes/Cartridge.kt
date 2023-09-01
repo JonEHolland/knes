@@ -1,5 +1,7 @@
 package com.knes
 
+import com.knes.mappers.MMC1
+import com.knes.mappers.MMC2
 import com.knes.mappers.NROM
 import java.lang.RuntimeException
 import java.nio.file.Files
@@ -57,6 +59,8 @@ abstract class Cartridge(
 
             when (header.mapperId) {
                 0 -> return NROM(bytes, header, state)
+                1 -> return MMC1(bytes, header, state)
+                2 -> return MMC2(bytes, header, state)
                 else -> {
                     throw RuntimeException("Unsupported Mapper or Invalid ROM format.")
                 }

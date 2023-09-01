@@ -77,14 +77,10 @@ class PPU(
 
     fun tick() {
 
-        fun shouldRender(): Boolean {
-            return bus.state.ppu.maskRegister.renderBackground || bus.state.ppu.maskRegister.renderSprites
-        }
-
         // Increments the tile pointer by one tile horizontally
         fun incrementScrollX() {
             with(bus.state.ppu) {
-                if (shouldRender()) {
+                if (maskRegister.shouldRender()) {
                     if (vramRegister.coarseX == 31) {
                         // Wrap around and flip nametable
                         vramRegister.coarseX = 0
@@ -100,7 +96,7 @@ class PPU(
         // Increments the tile pointer by one scanline vertically
         fun incrementScrollY() {
             with(bus.state.ppu) {
-                if (shouldRender()) {
+                if (maskRegister.shouldRender()) {
 
                     // If we have not scrolled a full tile, just update fineY
                     if (vramRegister.fineY < 7) {
@@ -127,7 +123,7 @@ class PPU(
         // the main VRAM Register
         fun transferAddressX() {
             with(bus.state.ppu) {
-                if (shouldRender()) {
+                if (maskRegister.shouldRender()) {
                     // FineX does not get transferred
                     vramRegister.nameTableX = tempVramRegister.nameTableX
                     vramRegister.coarseX = tempVramRegister.coarseX
@@ -139,7 +135,7 @@ class PPU(
         // the main VRAM Register
         fun transferAddressY() {
             with(bus.state.ppu) {
-                if (shouldRender()) {
+                if (maskRegister.shouldRender()) {
                     vramRegister.fineY = tempVramRegister.fineY
                     vramRegister.nameTableY = tempVramRegister.nameTableY
                     vramRegister.coarseY = tempVramRegister.coarseY
@@ -209,7 +205,7 @@ class PPU(
             var finalPalette: Int = 0x00
 
             if (scanline >= -1 && scanline < 240) {
-                if (scanline == 0 && cycle == 0 && oddFrame && shouldRender()) {
+                if (scanline == 0 && cycle == 0 && oddFrame && maskRegister.shouldRender()) {
                     // Skip a cycle on odd frames
                     cycle = 1
                 }
@@ -466,7 +462,7 @@ class PPU(
                             spritePriority = (sprite.attribute and 0x20) == 0
 
                             // If its Sprite 0 and a non transparent pixel
-                            spriteZeroBeingRendered = (spritePixel != 0 && i == 0)
+                            spriteZeroBeingRendered = spriteZeroHitPossible && spritePixel != 0 && i == 0
 
                             // If a non transparent pixel, break out of the loop, no other sprites need
                             // to be checked for this pixel location
@@ -506,11 +502,11 @@ class PPU(
 
 
             // Sprite0 Hit Detection
-            val spriteZeroOffset = if (!(maskRegister.renderBackgroundLeft || maskRegister.renderSpriteLeft)) 9 else 1
+
             statusRegister.spriteZeroHit =
+                    (maskRegister.shouldRender()) &&
                     (spriteZeroHitPossible && spriteZeroBeingRendered) &&
-                    (maskRegister.renderSprites && maskRegister.renderBackground) &&
-                    (cycle in spriteZeroOffset..257)
+                    (cycle in maskRegister.spriteZeroOffset()..257)
 
 
             // Draw the pixel
@@ -523,7 +519,7 @@ class PPU(
             }
 
             // Notify Cartridge of scanline completion if needed
-            if (shouldRender()) {
+            if (maskRegister.shouldRender()) {
                 if (cycle == 260 && scanline < 240) {
                     // TODO Notify Cartridge of Scanline for MMC3
                 }
