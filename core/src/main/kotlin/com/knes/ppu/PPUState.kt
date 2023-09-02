@@ -29,7 +29,6 @@ class PPUState {
     var spriteShiftPatternHigh: IntArray = IntArray(8)
     var spriteCount : Int  = 0
     var oamAddress : Int = 0x00
-    var spriteZeroHitPossible : Boolean = false
     var spriteZeroBeingRendered : Boolean = false
 
     // Background

@@ -74,7 +74,7 @@ class MMC3 (
             // Odd updates the register value
             if ((address and 0x1) != 0x1) {
                 target = (data.toInt() and 0xFF) and 0x7
-                prgBankMode = (data.toInt() and 0xFF) == 0x40
+                prgBankMode = ((data.toInt() and 0xFF) and 0x40) == 0x40
                 chrInversion = ((data.toInt() and 0xFF) and 0x80) == 0x80
             } else {
                 register[target] = (data.toInt() and 0xFF)
@@ -100,15 +100,17 @@ class MMC3 (
                 }
 
                 // Set PRG Banks
-                prgBanks[1] = (register[7] and 0x3F) * 0x2000
-                prgBanks[3] = ((prgBankCount * 2) - 1) * 0x2000
+
                 if (prgBankMode) {
                     prgBanks[2] = (register[6] and 0x3F) * 0x2000
-                    prgBanks[0] = ((prgBankCount * 2) - 2) * 0x2000
+                    prgBanks[0] = (prgBankCount * 2 - 2) * 0x2000
                 } else {
                     prgBanks[0] = (register[6] and 0x3F) * 0x2000
-                    prgBanks[2] = ((prgBankCount * 2) - 2) * 0x2000
+                    prgBanks[2] = (prgBankCount * 2 - 2) * 0x2000
                 }
+
+                prgBanks[1] = (register[7] and 0x3F) * 0x2000
+                prgBanks[3] = (prgBankCount * 2 - 1) * 0x2000
 
                 return
             }
@@ -196,10 +198,10 @@ class MMC3 (
         irqCounter = 0
         irqReload = 0
 
-        for (i in 0..3) {
+        for (i in 0..<4) {
             prgBanks[i] = 0
         }
-        for (i in 0..7){
+        for (i in 0..<8){
             chrBanks[i] = 0
             register[i] = 0
         }
