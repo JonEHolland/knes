@@ -328,13 +328,15 @@ class PPU(
                         if (diff in 0..<spriteSize) {
                             if (spriteCount <= 8) {
                                 // Sprite is visible and we have not ran out of sprites yet
-                                if (oamIndex == 0) {
-                                    // If we have sprite 0 on the scanline, mark the state
-                                    spriteZeroHitPossible = true
-                                }
 
                                 // Save the sprite to be rendered
                                 visibleOams[spriteIndex].set(oams[oamIndex])
+
+                                if (oamIndex == 0) {
+                                    // If this is Sprite 0, flag it on the OAM copy
+                                    visibleOams[spriteIndex].isSpriteZero = true
+                                }
+
                                 spriteCount++
                             }
                             spriteIndex++
@@ -344,11 +346,11 @@ class PPU(
 
                     // Mark the Sprite Overflow flag if there are more than 8 sprites on this
                     // scanline
-                    statusRegister.spriteOverflow = spriteCount > 8
+                    statusRegister.spriteOverflow = spriteCount >= 8
                 }
 
                 if (cycle == 340) {
-                    // Fetch all sprite data for the identified sprite
+                    // Fetch all sprite data for the identified sprites
 
                     for (i in 0..<spriteCount) {
                         val sprite = visibleOams[i]
@@ -468,7 +470,7 @@ class PPU(
                             spritePriority = (sprite.attribute and 0x20) == 0
 
                             // If its Sprite 0 and a non transparent pixel
-                            spriteZeroBeingRendered = spriteZeroHitPossible && spritePixel != 0 && i == 0
+                            spriteZeroBeingRendered = sprite.isSpriteZero && spritePixel != 0
 
                             // If a non transparent pixel, break out of the loop, no other sprites need
                             // to be checked for this pixel location
@@ -509,7 +511,7 @@ class PPU(
 
             // Sprite0 Hit Detection
             if ( (maskRegister.renderBackground && maskRegister.renderSprites) &&
-                (spriteZeroHitPossible && spriteZeroBeingRendered) &&
+                (spriteZeroBeingRendered) &&
                 (cycle in maskRegister.spriteZeroOffset()..<258)) {
 
                 statusRegister.spriteZeroHit = true
@@ -672,7 +674,33 @@ class PPU(
         }
     }
 
-    fun ppuBusRead(addr : Int) : Byte {
+    fun dma(offset : Int, data: Int) {
+        // DMA is used to transfer OAM. Each OAM entry is 4 bytes
+        // so this will be called 4 times to fully update the OAM entry
+        // The CPU is halted while this is happening so that you don't
+        // end up with a corrupted sprite during the transfer
+        with (bus.state.ppu) {
+            when ((offset and 0x03)) {
+                0x0 -> oams[offset shr 2].y = data and 0xFF
+                0x1 -> oams[offset shr 2].id = data and 0xFF
+                0x2 -> oams[offset shr 2].attribute = data and 0xFF
+                0x3 -> oams[offset shr 2].x = data and 0xFF
+            }
+        }
+    }
+
+    fun nmiRequested() : Boolean {
+        with (bus.state.ppu) {
+            if (nmiRequested) {
+                nmiRequested = false
+                return true
+            }
+
+            return false
+        }
+    }
+
+    private fun ppuBusRead(addr : Int) : Byte {
         var address = addr and 0x3FFF
         var data : Byte
 
@@ -710,7 +738,7 @@ class PPU(
         return data
     }
 
-    fun ppuBusWrite(addr: Int, data : Byte) {
+    private fun ppuBusWrite(addr: Int, data : Byte) {
         var address = addr and 0x3FFF
 
         if (bus.cart.willCartInterceptPPUWrite(address, data)) {
@@ -741,32 +769,6 @@ class PPU(
                     paletteMem[address] = data
                 }
             }
-        }
-    }
-
-    fun dma(offset : Int, data: Int) {
-        // DMA is used to transfer OAM. Each OAM entry is 4 bytes
-        // so this will be called 4 times to fully update the OAM entry
-        // The CPU is halted while this is happening so that you don't
-        // end up with a corrupted sprite during the transfer
-        with (bus.state.ppu) {
-            when ((offset and 0x03)) {
-                0x0 -> oams[offset shr 2].y = data and 0xFF
-                0x1 -> oams[offset shr 2].id = data and 0xFF
-                0x2 -> oams[offset shr 2].attribute = data and 0xFF
-                0x3 -> oams[offset shr 2].x = data and 0xFF
-            }
-        }
-    }
-
-    fun nmiRequested() : Boolean {
-        with (bus.state.ppu) {
-            if (nmiRequested) {
-                nmiRequested = false
-                return true
-            }
-
-            return false
         }
     }
 

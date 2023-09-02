@@ -6,12 +6,14 @@ class ObjectAttribute {
     var id : Int  = 0x00
     var attribute : Int  = 0x00
     var x : Int = 0x00
+    var isSpriteZero : Boolean = false
 
     fun clear(value: Int) {
         y = value
         id = value
         attribute = value
         x = value
+        isSpriteZero = false
     }
 
     fun set(o: ObjectAttribute) {
@@ -19,6 +21,7 @@ class ObjectAttribute {
         x = o.x
         attribute = o.attribute
         id = o.id
+        isSpriteZero = o.isSpriteZero
     }
 
     fun verticalFlipped() : Boolean {
