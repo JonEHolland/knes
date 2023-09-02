@@ -319,32 +319,34 @@ class PPU(
                     }
 
                     var oamIndex = 0
-                    while (oamIndex < 64 && spriteCount < 8) {
+                    var spriteIndex = 0
+                    while (oamIndex < 64 && spriteIndex < 8) {
 
                         // Calculate if the sprite is on this scanline
                         val diff = scanline - oams[oamIndex].y
                         val spriteSize = if (controlRegister.spriteSize) 16 else 8
 
                         if (diff in 0..<spriteSize) {
-                           if (spriteCount <= 8) {
-                               // Sprite is visible and we have not ran out of sprites yet
-                               if (oamIndex == 0) {
-                                   // If we have sprite 0 on the scanline, mark the state
-                                   spriteZeroHitPossible = true
-                               }
+                            if (spriteCount <= 8) {
+                                // Sprite is visible and we have not ran out of sprites yet
+                                if (oamIndex == 0) {
+                                    // If we have sprite 0 on the scanline, mark the state
+                                    spriteZeroHitPossible = true
+                                }
 
-                               // Save the sprite to be rendered
-                               visibleOams[spriteCount].set(oams[oamIndex])
-                           }
-                            spriteCount++
+                                // Save the sprite to be rendered
+                                visibleOams[spriteIndex].set(oams[oamIndex])
+                                spriteCount++
+                            }
+                            spriteIndex++
                         }
                         oamIndex++
                     }
 
                     // Mark the Sprite Overflow flag if there are more than 8 sprites on this
                     // scanline
-                    statusRegister.spriteOverflow = spriteCount > 7
-                    spriteCount = if (statusRegister.spriteOverflow) 7 else spriteCount
+                    statusRegister.spriteOverflow = spriteCount > 8
+                    spriteCount = if (statusRegister.spriteOverflow) 8 else spriteCount
                 }
 
                 if (cycle == 340) {
@@ -456,7 +458,7 @@ class PPU(
             if (maskRegister.renderSprites) {
                 if (maskRegister.renderSpriteLeft || cycle >= 9) {
                     spriteZeroBeingRendered = false
-                    for (i in 0..spriteCount) {
+                    for (i in 0..<spriteCount) {
                         val sprite = visibleOams[i]
                         // Cycle has reached the start of the sprite
                         if (sprite.x == 0) {

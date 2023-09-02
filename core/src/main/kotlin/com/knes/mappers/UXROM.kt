@@ -2,7 +2,7 @@ package com.knes.mappers
 
 import com.knes.Cartridge
 
-class MMC2 (
+class UXROM (
     private val rawBytes : ByteArray,
     private val header : Header) : Cartridge(rawBytes, header) {
 

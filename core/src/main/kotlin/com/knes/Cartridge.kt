@@ -54,12 +54,12 @@ abstract class Cartridge(
             val bytes = Files.readAllBytes(Paths.get(romName))
             val header = Header(bytes)
 
-            when (header.mapperId) {
-                0 -> return NROM(bytes, header)
-                1 -> return MMC1(bytes, header)
-                2 -> return MMC2(bytes, header)
-                3 -> return CNROM(bytes, header)
-                4 -> return MMC3(bytes, header)
+            return when (header.mapperId) {
+                0 -> NROM(bytes, header)
+                1 -> MMC1(bytes, header)
+                2 -> UXROM(bytes, header)
+                3 -> CNROM(bytes, header)
+                4 -> MMC3(bytes, header)
 
                 else -> {
                     throw RuntimeException("Unsupported Mapper or Invalid ROM format.")
