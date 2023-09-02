@@ -211,7 +211,7 @@ class PPU(
                 }
 
                 if (scanline == -1 && cycle == 1) {
-                    screenBuffer.clear()
+                    backBuffer.clear()
                     statusRegister.verticalBlank = false
                     statusRegister.spriteOverflow = false
                     statusRegister.spriteZeroHit = false
@@ -520,10 +520,10 @@ class PPU(
             // Draw the pixel
             if (cycle - 1 in 0..<SCREEN_WIDTH && scanline >= 0 && scanline < SCREEN_HEIGHT) {
                 val color = getColor(finalPalette, finalPixel)
-                screenBuffer.put(((color.r * 127).toInt()).toByte())
-                screenBuffer.put(((color.g * 127).toInt()).toByte())
-                screenBuffer.put(((color.b * 127).toInt()).toByte())
-                screenBuffer.put(((color.a * 127).toInt()).toByte())
+                backBuffer.put(((color.r * 127).toInt()).toByte())
+                backBuffer.put(((color.g * 127).toInt()).toByte())
+                backBuffer.put(((color.b * 127).toInt()).toByte())
+                backBuffer.put(((color.a * 127).toInt()).toByte())
             }
 
             // Notify Cartridge of scanline completion if needed
@@ -546,6 +546,10 @@ class PPU(
                     scanline = -1
                     frameComplete = true
                     oddFrame = !oddFrame
+                    backBuffer.flip()
+                    screenBuffer.clear()
+                    screenBuffer.put(backBuffer)
+                    screenBuffer.flip()
                 }
             }
         }

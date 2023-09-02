@@ -13,7 +13,7 @@ class BusState {
     var dmaOffset : Int = 0x00
 
     // Audio
-    var audioTime = 0.0f
+    var audioTime : Double = 0.0
 
     // Write to this from LibGDX
     var controller : IntArray = IntArray(2)

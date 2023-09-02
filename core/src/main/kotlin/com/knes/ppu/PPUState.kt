@@ -8,6 +8,7 @@ class PPUState {
     // Buffer
     val SCREEN_WIDTH = 256
     val SCREEN_HEIGHT = 240
+    var backBuffer : ByteBuffer = BufferUtils.newByteBuffer(SCREEN_HEIGHT * SCREEN_WIDTH * 4)
     var screenBuffer : ByteBuffer = BufferUtils.newByteBuffer(SCREEN_HEIGHT * SCREEN_WIDTH * 4)
 
     // Memory
@@ -75,7 +76,7 @@ class PPUState {
         tempVramRegister.setAddress(0x0000)
         oddFrame = false
         oams = Array(64) { ObjectAttribute() }
-        visibleOams = Array(8) { ObjectAttribute()}
-        screenBuffer.clear()
+        visibleOams = Array(8) { ObjectAttribute() }
+        backBuffer.clear()
     }
 }

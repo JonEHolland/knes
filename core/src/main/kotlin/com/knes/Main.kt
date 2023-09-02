@@ -10,7 +10,13 @@ import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.StretchViewport
-import kotlin.system.exitProcess
+import net.beadsproject.beads.core.AudioContext
+import net.beadsproject.beads.core.io.JavaSoundAudioIO
+import net.beadsproject.beads.ugens.Function
+import net.beadsproject.beads.ugens.WaveShaper
+import java.lang.IllegalArgumentException
+import java.util.concurrent.atomic.AtomicBoolean
+import javax.sound.sampled.AudioSystem
 
 
 class Main(var romName : String) : ApplicationAdapter() {
@@ -19,34 +25,50 @@ class Main(var romName : String) : ApplicationAdapter() {
     private lateinit var viewport : StretchViewport
     private lateinit var texture : Texture
     private lateinit var bus : Bus
+    private lateinit var audio : AudioContext
+
+    private val busFree = AtomicBoolean(true)
 
     override fun create() {
         batch = SpriteBatch()
-        camera = OrthographicCamera(256f,240f)
-        viewport = StretchViewport(256f,240f, camera)
+        camera = OrthographicCamera(256f, 240f)
+        viewport = StretchViewport(256f, 240f, camera)
         viewport.apply()
         camera.position.set(camera.viewportWidth / 2, camera.viewportHeight / 2, 0f)
 
-        bus = Bus(romName, State())
+        val jsa = JavaSoundAudioIO()
+        jsa.selectMixer(findAudioOutput())
+        audio = AudioContext(jsa)
+
+        bus = Bus(romName, State(), audio.sampleRate.toInt())
         texture = Texture(bus.state.ppu.SCREEN_WIDTH, bus.state.ppu.SCREEN_HEIGHT, Pixmap.Format.RGBA8888)
         bus.reset()
+
+        val audioProcessor: Function = object : Function(WaveShaper(audio)) {
+            override fun calculate(): Float {
+                var ready = false
+                while (!ready && busFree.get()) {
+                    ready = bus.tick()
+                }
+
+                return bus.audioSample
+            }
+        }
+
+        audio.out.addInput(audioProcessor)
+        audio.start()
     }
 
     override fun render() {
-        ScreenUtils.clear(0f,0f,0f,0f)
-        camera.update()
-
-
-
-        var audioReady = bus.tick()
-        while (!audioReady) {
-            audioReady = bus.tick()
-        }
+        busFree.set(false)
 
         if (bus.state.ppu.frameComplete) {
+            ScreenUtils.clear(0f,0f,0f,0f)
+            camera.update()
             checkInputs()
+
             bus.state.ppu.frameComplete = false
-            bus.state.ppu.screenBuffer.position(0)
+            //bus.state.ppu.screenBuffer.position(0)
 
             texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest)
             Gdx.gl.glTexImage2D(
@@ -66,6 +88,8 @@ class Main(var romName : String) : ApplicationAdapter() {
             batch.draw(texture, 0f, 0f)
             batch.end()
         }
+
+        busFree.set(true)
     }
 
     override fun resize(width: Int, height: Int) {
@@ -75,6 +99,7 @@ class Main(var romName : String) : ApplicationAdapter() {
 
     override fun dispose() {
         batch.dispose()
+        audio.stop()
     }
 
     private fun checkInputs() {
@@ -99,4 +124,40 @@ class Main(var romName : String) : ApplicationAdapter() {
 
         bus.state.bus.controller[0] = c and 0xFF
     }
+
+    private fun findAudioOutput() : Int {
+        var checker : AudioContext
+        AudioSystem.getMixerInfo().mapIndexed { index, mixer ->
+            val jsa = JavaSoundAudioIO()
+            jsa.selectMixer(index)
+            checker = AudioContext(jsa)
+
+            val valid = BooleanArray(1)
+            try {
+                val check: Function = object : Function(WaveShaper(checker)) {
+                    override fun calculate(): Float {
+                        valid[0] = true
+                        return 0f
+                    }
+                }
+
+                checker.out.addInput(check)
+                checker.start()
+                Thread.sleep(200)
+                if (valid[0]) {
+                    checker.stop()
+                    return index
+                }
+
+            } catch(e : IllegalArgumentException) {
+                // Eat it
+            }  catch (e : InterruptedException) {
+                // Eat it
+            }
+        }
+
+        return 0
+    }
+
+
 }

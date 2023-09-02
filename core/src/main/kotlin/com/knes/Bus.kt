@@ -7,12 +7,13 @@ import com.knes.ppu.PPU
 
 class Bus(
     romName : String,
-    val state : State
+    val state : State,
+    sampleRate : Int
 ) {
 
     // Magic constants from OLC
-    private val timePerSystemSample = 1.0f / 44100f
-    private val timePerNESCycle = 1.0f / 5369318.0f
+    private val timePerSystemSample = 1.0 / sampleRate.toDouble()
+    private val timePerNESCycle = 1.0 / 5369318.0f // PPU Clock
 
     val cpu = CPU(this)
     val cart = Cartridge.Load(romName)

@@ -13,7 +13,8 @@ fun main(args : Array<String>) {
       return
     Lwjgl3Application(Main(args[0]), Lwjgl3ApplicationConfiguration().apply {
         setTitle("knes")
-
+        setForegroundFPS(60)
+        useVsync(true)
         setWindowedMode(640, 480)
         setWindowIcon(*(arrayOf(128, 64, 32, 16).map { "libgdx$it.png" }.toTypedArray()))
     })
