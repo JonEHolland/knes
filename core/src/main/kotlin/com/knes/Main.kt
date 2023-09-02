@@ -36,33 +36,36 @@ class Main(var romName : String) : ApplicationAdapter() {
         ScreenUtils.clear(0f,0f,0f,0f)
         camera.update()
 
-        checkInputs()
 
-        bus.tick()
-        while (!bus.state.ppu.frameComplete) {
-            bus.tick()
+
+        var audioReady = bus.tick()
+        while (!audioReady) {
+            audioReady = bus.tick()
         }
 
-        bus.state.ppu.frameComplete = false
-        bus.state.ppu.screenBuffer.position(0)
+        if (bus.state.ppu.frameComplete) {
+            checkInputs()
+            bus.state.ppu.frameComplete = false
+            bus.state.ppu.screenBuffer.position(0)
 
-        texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest)
-        Gdx.gl.glTexImage2D(
-            GL20.GL_TEXTURE_2D,
-            0,
-            GL20.GL_RGBA,
-            bus.state.ppu.SCREEN_WIDTH,
-            bus.state.ppu.SCREEN_HEIGHT,
-            0,
-            GL20.GL_RGBA,
-            GL20.GL_BYTE,
-            bus.state.ppu.screenBuffer)
+            texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest)
+            Gdx.gl.glTexImage2D(
+                GL20.GL_TEXTURE_2D,
+                0,
+                GL20.GL_RGBA,
+                bus.state.ppu.SCREEN_WIDTH,
+                bus.state.ppu.SCREEN_HEIGHT,
+                0,
+                GL20.GL_RGBA,
+                GL20.GL_BYTE,
+                bus.state.ppu.screenBuffer)
 
-        batch.projectionMatrix = camera.combined
-        batch.begin()
-        texture.bind()
-        batch.draw(texture, 0f, 0f)
-        batch.end()
+            batch.projectionMatrix = camera.combined
+            batch.begin()
+            texture.bind()
+            batch.draw(texture, 0f, 0f)
+            batch.end()
+        }
     }
 
     override fun resize(width: Int, height: Int) {

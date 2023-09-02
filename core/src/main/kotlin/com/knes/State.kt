@@ -4,7 +4,6 @@ import com.knes.apu.APUState
 import com.knes.cpu.CPUState
 import com.knes.ppu.PPUState
 
-@OptIn(ExperimentalUnsignedTypes::class)
 class State {
     companion object {
         fun Load() : State {

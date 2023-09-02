@@ -10,10 +10,16 @@ class Bus(
     val state : State
 ) {
 
+    // Magic constants from OLC
+    private val timePerSystemSample = 1.0f / 44100f
+    private val timePerNESCycle = 1.0f / 5369318.0f
+
     val cpu = CPU(this)
     val cart = Cartridge.Load(romName)
     val ppu = PPU(this)
     val apu = APU(this)
+
+    var audioSample : Float = 0f
 
     fun read(addr :Int) : Byte {
         val address = addr and 0xFFFF
@@ -31,6 +37,9 @@ class Bus(
                 // PPU Registers
                 // 8 registers, mirrored through the range
                 data = ppu.cpuBusRead((address and 0x0007))
+            } else if(address == 0x4015) {
+                // APU
+                apu.cpuBusRead(address)
             } else if (address in 0x4016..0x4017) {
                 // Read LSB from controller state and shift register
                 data = if (controllerState[address and 0x0001] and 0x80 > 0) 0x1 else 0x0
@@ -55,6 +64,9 @@ class Bus(
                 // PPU Registers
                 // 8 registers, mirrored through the range
                 ppu.cpuBusWrite((address and 0x0007), data)
+            } else if (address == 0x4013 || address == 0x4015 || address == 0x4017) {
+                // APU Registers
+                apu.cpuBusWrite(address, data)
             } else if (address == 0x4014) {
                 // A write to this address enables DMA mode
                 // So we will setup the DMA state so the CPU can halt and
@@ -65,14 +77,15 @@ class Bus(
                 dmaEnabled = true
                 dmaWaitCycle = true
             } else if (address in 0x4016..0x4017) {
+                // Controllers
                controllerState[data.toInt() and 0x1] = controller[data.toInt() and 0x1]
             }
         }
     }
 
-    fun tick() {
+    fun tick() : Boolean {
         ppu.tick()
-        apu.tick() // Does nothing for now
+        apu.tick()
 
         // CPU runs 3x slower than PPU and APU
         if (state.clock % 3 == 0) {
@@ -82,11 +95,24 @@ class Bus(
             }
         }
 
-        // TODO - Audio Sync
+        // Set the audio sample to the APU's output if it is time
+        var audioReady = false
+        with (this.state.bus) {
+            audioTime += timePerNESCycle
+            if (audioTime >= timePerSystemSample) {
+                audioTime -= timePerSystemSample
+                audioSample = apu.audioSample()
+                audioReady = true
+            }
+        }
 
         // Pass NMI to CPU if PPU is requesting it
         if (ppu.nmiRequested()) {
             cpu.nmi()
+        }
+
+        if (apu.interruptRequested()) {
+            cpu.irq()
         }
 
         // Pass IRQ to CPU if Cartridge is requesting it.
@@ -96,6 +122,8 @@ class Bus(
         }
 
         state.clock++
+
+        return audioReady
     }
 
     private fun handleDMA() : Boolean {
