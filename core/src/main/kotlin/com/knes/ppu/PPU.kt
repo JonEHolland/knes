@@ -212,7 +212,6 @@ class PPU(
 
                 if (scanline == -1 && cycle == 1) {
                     screenBuffer.clear()
-                    ppuDataBuffer = 0
                     statusRegister.verticalBlank = false
                     statusRegister.spriteOverflow = false
                     statusRegister.spriteZeroHit = false
@@ -346,7 +345,6 @@ class PPU(
                     // Mark the Sprite Overflow flag if there are more than 8 sprites on this
                     // scanline
                     statusRegister.spriteOverflow = spriteCount > 8
-                    spriteCount = if (statusRegister.spriteOverflow) 8 else spriteCount
                 }
 
                 if (cycle == 340) {
@@ -510,9 +508,9 @@ class PPU(
             }
 
             // Sprite0 Hit Detection
-            if ( (maskRegister.shouldRender()) &&
+            if ( (maskRegister.renderBackground && maskRegister.renderSprites) &&
                 (spriteZeroHitPossible && spriteZeroBeingRendered) &&
-                (cycle in maskRegister.spriteZeroOffset()..257)) {
+                (cycle in maskRegister.spriteZeroOffset()..<258)) {
 
                 statusRegister.spriteZeroHit = true
             }
