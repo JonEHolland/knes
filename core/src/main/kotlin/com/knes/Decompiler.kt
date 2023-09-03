@@ -2,7 +2,7 @@ package com.knes
 
 
 fun main() {
-    val bus = Bus("./nestest.nes", State(), 44100)
+    val bus = Bus("./nestest.nes", State())
     bus.reset()
 
     var decompiled = bus.cpu.decompile()
@@ -11,4 +11,3 @@ fun main() {
         decompiled = bus.cpu.decompile()
     }
 }
-

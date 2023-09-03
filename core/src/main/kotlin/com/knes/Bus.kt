@@ -7,20 +7,13 @@ import com.knes.ppu.PPU
 
 class Bus(
     romName : String,
-    val state : State,
-    sampleRate : Int
-) {
-
-    // Magic constants from OLC
-    private val timePerSystemSample = 1.0 / sampleRate.toDouble()
-    private val timePerNESCycle = 1.0 / 5369318.0f // PPU Clock
+    val state : State) {
 
     val cpu = CPU(this)
     val cart = Cartridge.Load(romName)
     val ppu = PPU(this)
     val apu = APU(this)
 
-    var audioSample : Float = 0f
 
     fun read(addr :Int) : Byte {
         val address = addr and 0xFFFF
@@ -84,7 +77,7 @@ class Bus(
         }
     }
 
-    fun tick() : Boolean {
+    fun tick() {
         ppu.tick()
         apu.tick()
 
@@ -93,17 +86,6 @@ class Bus(
             // If in DMA mode, CPU is halted
             if (!handleDMA()) {
                 cpu.tick()
-            }
-        }
-
-        // Set the audio sample to the APU's output if it is time
-        var audioReady = false
-        with (this.state.bus) {
-            audioTime += timePerNESCycle
-            if (audioTime >= timePerSystemSample) {
-                audioTime -= timePerSystemSample
-                audioSample = apu.audioSample()
-                audioReady = true
             }
         }
 
@@ -123,8 +105,6 @@ class Bus(
         }
 
         state.clock++
-
-        return audioReady
     }
 
     private fun handleDMA() : Boolean {

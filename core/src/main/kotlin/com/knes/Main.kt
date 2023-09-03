@@ -15,7 +15,6 @@ import net.beadsproject.beads.core.io.JavaSoundAudioIO
 import net.beadsproject.beads.ugens.Function
 import net.beadsproject.beads.ugens.WaveShaper
 import java.lang.IllegalArgumentException
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.sound.sampled.AudioSystem
 
 
@@ -27,8 +26,6 @@ class Main(var romName : String) : ApplicationAdapter() {
     private lateinit var bus : Bus
     private lateinit var audio : AudioContext
 
-    private val busFree = AtomicBoolean(true)
-
     override fun create() {
         batch = SpriteBatch()
         camera = OrthographicCamera(256f, 240f)
@@ -37,21 +34,24 @@ class Main(var romName : String) : ApplicationAdapter() {
         camera.position.set(camera.viewportWidth / 2, camera.viewportHeight / 2, 0f)
 
         val jsa = JavaSoundAudioIO()
-        jsa.selectMixer(findAudioOutput())
+        jsa.selectMixer(5)  // TODO - Fix Finding the right mixer
         audio = AudioContext(jsa)
-
-        bus = Bus(romName, State(), audio.sampleRate.toInt())
-        texture = Texture(bus.state.ppu.SCREEN_WIDTH, bus.state.ppu.SCREEN_HEIGHT, Pixmap.Format.RGBA8888)
+        bus = Bus(romName, State())
         bus.reset()
+        texture = Texture(bus.state.ppu.SCREEN_WIDTH, bus.state.ppu.SCREEN_HEIGHT, Pixmap.Format.RGBA8888)
+
+        // Bus runs at 5.3mhz, so divide by sampleRate to get the
+        // number of bus clocks needed per Audio Sample
+        val audioCycles = 5369318 / audio.sampleRate
 
         val audioProcessor: Function = object : Function(WaveShaper(audio)) {
             override fun calculate(): Float {
-                var ready = false
-                while (!ready && busFree.get()) {
-                    ready = bus.tick()
+                var cycleCounter = 0
+                while (cycleCounter <= audioCycles)  {
+                    bus.tick()
+                    cycleCounter++
                 }
-
-                return bus.audioSample
+                return 0f //bus.apu.audioSample()
             }
         }
 
@@ -60,36 +60,28 @@ class Main(var romName : String) : ApplicationAdapter() {
     }
 
     override fun render() {
-        busFree.set(false)
+        ScreenUtils.clear(0f, 0f, 0f, 0f)
+        camera.update()
+        checkInputs()
 
-        if (bus.state.ppu.frameComplete) {
-            ScreenUtils.clear(0f,0f,0f,0f)
-            camera.update()
-            checkInputs()
+        texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest)
+        Gdx.gl.glTexImage2D(
+            GL20.GL_TEXTURE_2D,
+            0,
+            GL20.GL_RGBA,
+            bus.state.ppu.SCREEN_WIDTH,
+            bus.state.ppu.SCREEN_HEIGHT,
+            0,
+            GL20.GL_RGBA,
+            GL20.GL_BYTE,
+            bus.state.ppu.screenBuffer
+        )
 
-            bus.state.ppu.frameComplete = false
-            //bus.state.ppu.screenBuffer.position(0)
-
-            texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest)
-            Gdx.gl.glTexImage2D(
-                GL20.GL_TEXTURE_2D,
-                0,
-                GL20.GL_RGBA,
-                bus.state.ppu.SCREEN_WIDTH,
-                bus.state.ppu.SCREEN_HEIGHT,
-                0,
-                GL20.GL_RGBA,
-                GL20.GL_BYTE,
-                bus.state.ppu.screenBuffer)
-
-            batch.projectionMatrix = camera.combined
-            batch.begin()
-            texture.bind()
-            batch.draw(texture, 0f, 0f)
-            batch.end()
-        }
-
-        busFree.set(true)
+        batch.projectionMatrix = camera.combined
+        batch.begin()
+        texture.bind()
+        batch.draw(texture, 0f, 0f)
+        batch.end()
     }
 
     override fun resize(width: Int, height: Int) {
