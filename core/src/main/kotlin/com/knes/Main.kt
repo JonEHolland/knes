@@ -51,7 +51,7 @@ class Main(var romName : String) : ApplicationAdapter() {
                     bus.tick()
                     cycleCounter++
                 }
-                return 0f //bus.apu.audioSample()
+                return bus.apu.audioSample().toFloat()
             }
         }
 

@@ -58,7 +58,7 @@ class Bus(
                 // PPU Registers
                 // 8 registers, mirrored through the range
                 ppu.cpuBusWrite((address and 0x0007), data)
-            } else if (address == 0x4013 || address == 0x4015 || address == 0x4017) {
+            } else if (address <= 0x4013 || address == 0x4015 || address == 0x4017) {
                 // APU Registers
                 apu.cpuBusWrite(address, data)
             } else if (address == 0x4014) {
@@ -77,9 +77,11 @@ class Bus(
         }
     }
 
+    val apuTick = 1.0 / 5369318.0
+
     fun tick() {
         ppu.tick()
-        apu.tick()
+        apu.tick(true, apuTick)
 
         // CPU runs 3x slower than PPU and APU
         if (state.clock % 3 == 0) {
@@ -147,6 +149,7 @@ class Bus(
     fun reset() {
         state.reset()
         cart.reset() // Needed to ensure mappers setup correctly
+        apu.reset() // Configure registers
         cpu.reset() // Needed because of the Reset Vector
     }
 
